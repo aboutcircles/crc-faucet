@@ -1,0 +1,12 @@
+[submodule "contracts/lib/forge-std"]
+	path = contracts/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "contracts/lib/circles-token-offer"]
+	path = contracts/lib/circles-token-offer
+	url = https://github.com/aboutcircles/circles-token-offer
+[submodule "contracts/lib/solady"]
+	path = contracts/lib/solady
+	url = https://github.com/vectorized/solady
+[submodule "contracts/lib/circles-contracts-v2"]
+	path = contracts/lib/circles-contracts-v2
+	url = https://github.com/aboutcircles/circles-contracts-v2
