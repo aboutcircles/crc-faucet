@@ -3,22 +3,23 @@ pragma solidity ^0.8.0;
 
 import {Test, console} from "forge-std/Test.sol";
 import {SepETH} from "../src/SepETH.sol";
-import {SepETHLock} from "../src/SepETHLock.sol";
+import {NativeTokenDeposit} from "../src/NativeTokenDeposit.sol";
 
 contract TokenBridgingTest is Test {
     address owner = makeAddr("owner");
     address alice = makeAddr("alice");
 
     SepETH sepETH;
-    SepETHLock sepETHLock;
+    NativeTokenDeposit sepETHDeposit;
 
     event TokenBridgingInitiated(address indexed from, address indexed recipient, uint256 indexed amount);
+    event TokenDeposited(address indexed from, address indexed recipient, uint256 indexed amount);
+    event TokenWithdrawn(address indexed to, uint256 indexed amount);
     event Transfer(address indexed from, address indexed to, uint256 indexed amount);
-    event ETHUnlocked(address indexed to, uint256 indexed amount);
 
     function setUp() public {
         sepETH = new SepETH(owner);
-        sepETHLock = new SepETHLock(owner);
+        sepETHDeposit = new NativeTokenDeposit(owner);
         deal(owner, 1_000 ether);
     }
 
@@ -28,10 +29,10 @@ contract TokenBridgingTest is Test {
         // lock on Sepolia
         vm.prank(owner);
         vm.expectEmit();
-        emit TokenBridgingInitiated(owner, owner, amount);
+        emit TokenDeposited(owner, owner, amount);
 
-        payable(address(sepETHLock)).transfer(amount);
-        assertEq(address(sepETHLock).balance, amount); // gas fee
+        payable(address(sepETHDeposit)).transfer(amount);
+        assertEq(address(sepETHDeposit).balance, amount); // gas fee
         assertEq(owner.balance, balanceBefore - amount); // gas fee
 
         vm.prank(alice);
@@ -46,12 +47,13 @@ contract TokenBridgingTest is Test {
     function testBurnAndUnlock(uint256 amount) public {
         // get owner certain amount of sepETH
 
-        deal(address(sepETHLock), amount);
+        deal(address(sepETHDeposit), amount);
 
         vm.prank(owner);
         sepETH.mint(owner, amount);
         assertEq(sepETH.balanceOf(owner), amount);
         assertEq(sepETH.totalSupply(), amount);
+
         vm.prank(owner);
         sepETH.transfer(alice, amount);
         assertEq(sepETH.balanceOf(owner), 0);
@@ -66,13 +68,13 @@ contract TokenBridgingTest is Test {
 
         vm.prank(alice);
         vm.expectRevert();
-        sepETHLock.unlock(alice, amount);
+        sepETHDeposit.withdraw(alice, amount);
 
         vm.prank(owner);
         vm.expectEmit();
-        emit ETHUnlocked(alice, amount);
-        sepETHLock.unlock(alice, amount);
+        emit TokenWithdrawn(alice, amount);
+        sepETHDeposit.withdraw(alice, amount);
         assertEq(alice.balance, amount);
-        assertEq(address(sepETHLock).balance, 0);
+        assertEq(address(sepETHDeposit).balance, 0);
     }
 }
