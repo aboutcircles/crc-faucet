@@ -56,7 +56,7 @@ contract NativeTokenDeposit {
         OWNER = newOwner;
     }
 
-    receive() external payable{
-         emit TokenDeposited(msg.sender, msg.sender, msg.value);
+    receive() external payable {
+        emit TokenDeposited(msg.sender, msg.sender, msg.value);
     }
 }
