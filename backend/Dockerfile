@@ -1,4 +1,3 @@
-# Use Node.js 18 as base image
 FROM node:20-alpine
 
 # Install build dependencies
