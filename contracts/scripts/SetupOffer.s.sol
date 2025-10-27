@@ -7,31 +7,70 @@ import {ERC20TokenOfferCycle} from "circles-token-offer/src/ERC20TokenOfferCycle
 import {ERC20TokenOfferFactory} from "circles-token-offer/src/ERC20TokenOfferFactory.sol";
 import {ERC20TokenOffer} from "circles-token-offer/src/ERC20TokenOffer.sol";
 import {SepETH} from "../src/SepETH.sol";
+import {IHubV2} from "circles-contracts-v2/hub/IHub.sol";
 
 contract SetupOfferScript is Script {
     // Arrays to store the final, filtered data
+    address[] public addressesArray_1;
+    uint256[] public valuesArray_1;
+    address[] public addressesArray_2;
+    uint256[] public valuesArray_2;
+    address[] public addressesArray_3;
+    uint256[] public valuesArray_3;
     address[] public addressesArray;
     uint256[] public valuesArray;
-
-    ERC20TokenOfferFactory factory;
+    IHubV2 hub = IHubV2(0xc12C1E50ABB450d6205Ea2C3Fa861b3B834d13e8);
+    ERC20TokenOfferFactory factory = ERC20TokenOfferFactory(0x43C8e7cb2fea3A55B52867bb521EBf8cb072fECa);
     ERC20TokenOfferCycle cycle;
     ERC20TokenOffer offer;
     SepETH sepETH;
+    // List of accepted group CRC
+    address[] acceptedGroupCRC = [
+        0x08e67f0f22C67DabfA7876CE78908eB448336B45,
+        0x09543432cC631BB52a9b65AC0f19F031bFd2aB18,
+        0x1557376109ca7564b124e7AC9e96978B21806AE3,
+        0x1ACA75e38263c79d9D4F10dF0635cc6FCfe6F026,
+        0x1c43a8bE1EEA4875b9bFe096a8714Ca38b78304b,
+        0x2b5E4045936ef12250a8c01e4Cbf71E9bEE69e00,
+        0x401C07F1b1296EF9b9fC137B54468875E1919a96,
+        0x43322ADF67D969219d014D60C860966269F4F93E,
+        0x44057a3Af7F746BD4f957fE0b22b1f82423c2B4a,
+        0x4E2564e5df6C1Fb10C1A018538de36E4D5844DE5,
+        0x4f21a0724C1AbC3Df4f157E245D5272c6D9C4735,
+        0x59075e386576D770083748A5b474b1C5E7f99Af2,
+        0x6Db96207aB21c908F7c66C3A14f7e5faFCa7aF15,
+        0x86533d1aDA8Ffbe7b6F7244F9A1b707f7f3e239b,
+        0x8ef24265D591c674e222c5A27332DbAE5929eD74,
+        0x9032b9dA21eAf98B78F675576E81dA847B94E21C,
+        0x928D086Ffe4506bd1e0f9d5F11676afe9081d5Fd,
+        0x9D4b8617988921D5a36aC605d83DF7395bF57De3,
+        0xA90a9b3e6F0c5eDBcBaeda11BF630a652BC77518,
+        0xBB09Fb833D5fA0A210fef144A9592E74a6e198df,
+        0xbfCE3136DBE261E4DBd757bB9a718BeD8a9993d5,
+        0xc3E12D39BE3e5fF9f7bd5cA17636301ee0598730,
+        0xC64Df4a72c62DEBbb46664303f5EEBE749AE2C52,
+        0xEb614eF61367687704CD4628a68A02F3B10ce68C,
+        0xf1091ED8a6f72a27f97969818bA29031Aa6E58bf
+    ];
 
     uint256 deployer = vm.envUint("PRIVATE_KEY");
     address cycleOwner = vm.addr(deployer);
     uint256 offerStart = block.timestamp;
-    uint256 offerDuration = 1 weeks;
+    uint256 offerDuration = 10; // 10 blocks
     string offerName = "CRC-SepETH offer";
     string cycleName = "CRC-SepETH offer cycle";
 
     function setUp() public {
         vm.startBroadcast(deployer);
+  
         uint256 initialTotalSupply = 1e40 ether;
         sepETH = new SepETH(cycleOwner);
         sepETH.mint(cycleOwner, initialTotalSupply);
+
+        sepETH = SepETH(0x886AB8111209BE56e59A814b3b8A58d66eC4C3c3);
+
         address offerToken = address(sepETH);
-        factory = new ERC20TokenOfferFactory();
+        
 
         cycle = ERC20TokenOfferCycle(
             factory.createERC20TokenOfferCycle(
@@ -44,8 +83,8 @@ contract SetupOfferScript is Script {
     }
 
     function run() public {
-        uint256 tokenPriceInCRC = 24 ether;
-        uint256 offerLimitInCRC = 10 ether;
+        uint256 tokenPriceInCRC = 480 ether;
+        uint256 offerLimitInCRC = 24 ether;
 
         // Start the script transaction
         vm.startBroadcast(deployer);
@@ -74,12 +113,21 @@ contract SetupOfferScript is Script {
         address[] memory trustedAccs,
         uint256[] memory weights
     ) public {
-        offer = ERC20TokenOffer(cycle.createNextOffer(tokenPriceInCRC, offerLimitInCRC, trustedAccs));
-        cycle.setNextOfferAccountWeights(trustedAccs, weights);
-
+        // offer = ERC20TokenOffer(cycle.createNextOffer(tokenPriceInCRC, offerLimitInCRC, acceptedGroupCRC));
+        // cycle.setNextOfferAccountWeights(addressesArray_1, valuesArray_1);
+        // cycle.setNextOfferAccountWeights(addressesArray_2, valuesArray_2);
+        // cycle.setNextOfferAccountWeights(addressesArray_3, valuesArray_3);
+    cycle = ERC20TokenOfferCycle(0x53a69f8A6570848f4918def201f81E34a4A4B54a);
         cycle.depositNextOfferTokens();
+    // TODO: fix
+    // ├─ [5690] 0x53a69f8A6570848f4918def201f81E34a4A4B54a::depositNextOfferTokens()
+    // │   ├─ [0] 0x0000000000000000000000000000000000000000::getRequiredOfferTokenAmount() [staticcall]
+    // │   │   └─ ← [Stop]
+    // │   └─ ← [Revert] call to non-contract address 0x0000000000000000000000000000000000000000
+    // └─ ← [Revert] call to non-contract address 0x0000000000000000000000000000000000000000
+        // cycle.syncOfferTrust();
 
-        cycle.syncOfferTrust();
+
     }
 
     /// @notice Parse CSV content and populate arrays
@@ -88,7 +136,6 @@ contract SetupOfferScript is Script {
         // Split by newlines (handle both \n and \r\n)
         string[] memory lines = splitString(csvContent, "\n");
 
-        // Process all data rows
         for (uint256 i = 0; i < lines.length; i++) {
             // Trim the line to remove any \r or whitespace
             string memory line = trim(lines[i]);
@@ -107,8 +154,22 @@ contract SetupOfferScript is Script {
 
                 // Filter out zero addresses (optional)
                 if (addr != address(0)) {
-                    addressesArray.push(addr);
-                    valuesArray.push(value);
+                    if (i < 1000) {
+                        addressesArray_1.push(addr);
+                        valuesArray_1.push(value);
+                        addressesArray.push(addr);
+                        valuesArray.push(value);
+                    } else if (i >= 1000 && i < 2000) {
+                        addressesArray_2.push(addr);
+                        valuesArray_2.push(value);
+                        addressesArray.push(addr);
+                        valuesArray.push(value);
+                    } else {
+                        addressesArray_3.push(addr);
+                        valuesArray_3.push(value);
+                        addressesArray.push(addr);
+                        valuesArray.push(value);
+                    }
                 }
             }
         }
