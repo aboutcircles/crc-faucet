@@ -6,7 +6,10 @@
     }
   },
   "lib/circles-token-offer": {
-    "rev": "361570bac4ea28a603cb61595e7e87768eb0f5b3"
+    "branch": {
+      "name": "feat/TokenOfferDepositWithAmt",
+      "rev": "f2a4789eb2e022cfe1445b109de9942dcb909240"
+    }
   },
   "lib/forge-std": {
     "tag": {

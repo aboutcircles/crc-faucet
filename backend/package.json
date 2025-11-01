@@ -8,8 +8,14 @@
     "init-db": "psql -U postgres -f init_db.sql"
   },
   "dependencies": {
+    "@circles-sdk/adapter-ethers": "^0.29.1",
+    "@circles-sdk/data": "^0.29.1",
+    "@circles-sdk/profiles": "^0.29.1",
+    "@circles-sdk/sdk": "^0.29.1",
+    "@circles-sdk/utils": "^0.29.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
+    "ethers": "^6.15.0",
     "express": "^4.18.2",
     "pg": "^8.11.3",
     "psql": "^0.0.1",

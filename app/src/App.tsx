@@ -2,6 +2,8 @@ import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { useState, useEffect } from 'react'
 import { checkSafesAndAvatars } from './safeAvatarChecker'
 import './App.css'
+import { createPublicClient, http, parseEventLogs, parseAbiItem } from 'viem';
+import { sepolia } from 'viem/chains';
 
 interface SafeWithAvatar {
   safeAddress: string;
@@ -33,7 +35,7 @@ function App() {
     const addressWithoutPrefix = recipientAddress.slice(2)
     const abiEncodedAddress = '0x' + '0'.repeat(24) + addressWithoutPrefix
     
-    const faucetOrgAddress = import.meta.env.VITE_FAUCET_ORG_ADDRESS
+    const faucetOrgAddress = import.meta.env.VITE_CYCLE_CONTRACT
     const crcAmount = import.meta.env.VITE_CRC_AMOUNT
     
     return `https://app.metri.xyz/transfer/${faucetOrgAddress}/crc/${crcAmount}?data=${abiEncodedAddress}`
@@ -41,21 +43,65 @@ function App() {
 
   const queryTransactionHash = async (recipientAddress: string) => {
     try {
-      console.log("Try")
-      const response = await fetch(`http://localhost:3001/api/transaction/${recipientAddress}`)
-      const data = await response.json()
-      
-      if (data.success && data.data) {
-        setTransactionHashes(prev => ({
-          ...prev,
-          [recipientAddress]: data.data.transactionHash
-        }))
+      const sepoliaPublicClient = createPublicClient({
+        chain: sepolia,
+        transport: http()
+      })
+
+      const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS
+      if (!CONTRACT_ADDRESS) {
+        console.error('Missing VITE_CONTRACT_ADDRESS environment variable')
+        return
       }
+
+      const unwatch = sepoliaPublicClient.watchContractEvent({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: [
+          parseAbiItem(
+            "event TokenWithdrawn(address indexed to, uint256 indexed amount)"
+          ),
+        ],
+        eventName: "TokenWithdrawn",
+        onLogs: async (logs) => {
+          const txHash = await checkTokenWithdrawRecipient(logs, recipientAddress)
+          if (txHash) {
+            setTransactionHashes(prev => ({
+              ...prev,
+              [recipientAddress]: txHash
+            }))
+            unwatch()
+          }
+        },
+      })
     } catch (error) {
       console.error('Error querying transaction hash:', error)
     }
   }
 
+  const checkTokenWithdrawRecipient = async (logs: any[], recipientAddress: string): Promise<string | null> => {
+    try {
+      for (const log of logs) {
+        const parsedLogs = parseEventLogs({
+          abi: [
+            parseAbiItem(
+              "event TokenWithdrawn(address indexed to, uint256 indexed amount)"
+            ),
+          ],
+          logs: [log],
+        })
+        
+        for (const parsedLog of parsedLogs) {
+          if (parsedLog.args.to?.toLowerCase() === recipientAddress.toLowerCase()) {
+            return parsedLog.transactionHash
+          }
+        }
+      }
+      return null
+    } catch (error) {
+      console.error('Error parsing logs:', error)
+      return null
+    }
+  }
   const handleAddressChange = (safeAddress: string, value: string) => {
     setRecipientAddresses(prev => ({
       ...prev,

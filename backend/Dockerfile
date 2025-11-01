@@ -4,7 +4,7 @@ FROM node:20-alpine
 RUN apk add --no-cache python3 make g++
 
 # Set working directory
-WORKDIR /app
+WORKDIR /backend
 
 # Copy package files
 COPY package*.json ./
