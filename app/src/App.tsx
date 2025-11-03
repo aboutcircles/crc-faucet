@@ -253,7 +253,7 @@ function App() {
                   </div>
                 ) : safesWithAvatars.length > 0 ? (
                   <>
-                    {safesWithAvatars.map((safe, index) => (
+                    {safesWithAvatars.map((safe) => (
                       <div key={safe.safeAddress}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                           <span style={{ fontWeight: '600', color: '#3B2E6E', fontFamily: 'Inter, system-ui, sans-serif' }}>Avatar</span>
@@ -296,7 +296,7 @@ function App() {
             
             {isConnected && safesWithAvatars.length > 0 && (
               <div className="safes-section">
-                {safesWithAvatars.map((safe, index) => (
+                {safesWithAvatars.map((safe) => (
                   safe.avatarInfo?.isHuman && 
                   safe.trustScore?.results?.[0]?.score && safe.trustScore.results[0].score > TRUST_SCORE_THRESHOLD && (
                     <div key={safe.safeAddress} style={{ backgroundColor: 'rgba(69, 130, 193, 0.1)', padding: '16px', margin: '16px 0', borderRadius: '12px', border: '1px solid rgba(69, 130, 193, 0.2)' }}>
