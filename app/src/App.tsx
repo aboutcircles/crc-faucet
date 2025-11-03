@@ -2,8 +2,9 @@ import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { useState, useEffect } from 'react'
 import { checkSafesAndAvatars } from './safeAvatarChecker'
 import './App.css'
-import { createPublicClient, http, parseEther } from 'viem';
-import { sepolia } from 'viem/chains';
+import CirclesLogo from './assets/CirclesLogo.png'
+import { createPublicClient, http, parseAbiItem, parseEther } from 'viem';
+import { sepolia, gnosis } from 'viem/chains';
 
 interface SafeWithAvatar {
   safeAddress: string;
@@ -13,9 +14,12 @@ interface SafeWithAvatar {
       score: number;
     }>;
   };
+  lastClaimTimestamp?: number;
+  isEligible?: boolean;
 }
 
 const TRUST_SCORE_THRESHOLD = Number(import.meta.env.VITE_TRUST_SCORE_THRESHOLD) || 40;
+const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
 
 function App() {
   const { address, isConnected } = useAccount()
@@ -44,6 +48,49 @@ function App() {
     const crcAmount = import.meta.env.VITE_CRC_AMOUNT
     
     return `https://app.metri.xyz/transfer/${faucetOrgAddress}/crc/${crcAmount}?data=${abiEncodedAddress}`
+  }
+
+  const checkLastClaimTimestamp = async (avatarAddress: string): Promise<number> => {
+    try {
+      const gnosisPublicClient = createPublicClient({
+        chain: gnosis,
+        transport: http(import.meta.env.VITE_GNOSIS_RPC)
+      })
+
+      const faucetOrgAddress = import.meta.env.VITE_FAUCET_ORG_ADDRESS as `0x${string}`
+      
+      const lastClaim = await gnosisPublicClient.readContract({
+        address: faucetOrgAddress,
+        abi: [parseAbiItem("function lastClaimTimestamp(address avatar) external returns(uint256 lastClaim)")],
+        functionName: 'lastClaimTimestamp',
+        args: [avatarAddress as `0x${string}`]
+      })
+
+      return Number(lastClaim)
+    } catch (error) {
+      console.error('Error checking last claim timestamp:', error)
+      return 0
+    }
+  }
+
+  const checkEligibility = (safe: SafeWithAvatar): boolean => {
+    // Must be registered as human
+    if (!safe.avatarInfo?.isHuman) {
+      return false
+    }
+
+    const currentTimestamp = Math.floor(Date.now() / 1000)
+    const lastClaim = safe.lastClaimTimestamp || 0
+    
+    // Check if more than 1 day has passed since last claim or no claim yet
+    const canClaimByTime = lastClaim === 0 || (currentTimestamp - lastClaim) > ONE_DAY_IN_SECONDS
+    
+    // Check trust score
+    const trustScore = safe.trustScore?.results?.[0]?.score || 0
+    const canClaimByTrust = trustScore > TRUST_SCORE_THRESHOLD
+    
+    // User is eligible if they meet the time requirement OR have sufficient trust score
+    return canClaimByTime && canClaimByTrust
   }
 
 
@@ -142,10 +189,28 @@ function App() {
           }
 
           const result = await checkSafesAndAvatars(address, apiKey)
-          result.forEach((safe, index) => {
-            console.log(`Safe #${index + 1} Avatar Info:`, safe.avatarInfo)
-          })
-          setSafesWithAvatars(result)
+          
+          // Check last claim timestamps and calculate eligibility for each safe
+          const safesWithEligibility = await Promise.all(
+            result.map(async (safe) => {
+              const lastClaimTimestamp = await checkLastClaimTimestamp(safe.safeAddress)
+              const isEligible = checkEligibility({
+                ...safe,
+                lastClaimTimestamp
+              })
+              
+              console.log(`Safe #${result.indexOf(safe) + 1} Avatar Info:`, safe.avatarInfo)
+              console.log(`Last claim timestamp: ${lastClaimTimestamp}, Eligible: ${isEligible}`)
+              
+              return {
+                ...safe,
+                lastClaimTimestamp,
+                isEligible
+              }
+            })
+          )
+          
+          setSafesWithAvatars(safesWithEligibility)
         } catch (error) {
           console.error('Error fetching safes and avatars:', error)
         } finally {
@@ -163,7 +228,7 @@ function App() {
     <div className="app">
       <div className="header">
         <div className="header-left">
-          <img src='/src/assets/CirclesLogo.png' alt="Circles Logo" className="logo" />
+          <img src={CirclesLogo} alt="Circles Logo" className="logo" />
           <h1 className="title">Circles - Sepolia ETH Faucet</h1>
         </div>
         <div className="header-right">
@@ -240,8 +305,8 @@ function App() {
                 <h3 style={{ marginTop: '0', marginBottom: '16px', color: '#3B2E6E', fontFamily: 'Inter, system-ui, sans-serif', fontWeight: '700' }}>Your Circles Profile</h3>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ fontWeight: '600', color: '#3B2E6E', fontFamily: 'Inter, system-ui, sans-serif' }}>Connected to</span>
-                  <span style={{ color: '#4582C1', fontFamily: 'Inter, monospace, sans-serif' }}>{address}</span>
+                <span style={{ fontWeight: '600', color: '#3B2E6E', fontFamily: 'Inter, system-ui, sans-serif' }}>Connected to</span>
+                <span style={{ color: '#4582C1', fontSize: '14px', wordBreak: 'break-all', fontFamily: 'Inter, monospace, sans-serif' }}>{address}</span>
                 </div>
                 
                 {isLoading ? (
@@ -265,6 +330,33 @@ function App() {
                               'Registered human' : 
                               'Not registered as human, please register as human first'
                             }
+                          </span>
+                        </div>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                          <span style={{ fontWeight: '600', color: '#3B2E6E', fontFamily: 'Inter, system-ui, sans-serif' }}>Eligibility</span>
+                          <span style={{ color: safe.isEligible ? '#4582C1' : '#F19488', fontFamily: 'Inter, system-ui, sans-serif' }}>
+                            {(() => {
+                              if (!safe.avatarInfo?.isHuman) {
+                                return 'Not registered as human'
+                              }
+                              if (safe.isEligible) {
+                                return 'Eligible for faucet'
+                              }
+                              
+                              const currentTimestamp = Math.floor(Date.now() / 1000)
+                              const lastClaim = safe.lastClaimTimestamp || 0
+                              const canClaimByTime = lastClaim === 0 || (currentTimestamp - lastClaim) > ONE_DAY_IN_SECONDS
+                              const trustScore = safe.trustScore?.results?.[0]?.score || 0
+                              
+                              if (!canClaimByTime) {
+                                return "You've claimed less than 1 day ago, please wait for 1 day to claim again"
+                              } else if (trustScore <= TRUST_SCORE_THRESHOLD) {
+                                return 'Avatar trust score is below 50'
+                              }
+                              
+                              return 'Not eligible'
+                            })()}
                           </span>
                         </div>
                         
@@ -295,8 +387,7 @@ function App() {
             {isConnected && safesWithAvatars.length > 0 && (
               <div className="safes-section">
                 {safesWithAvatars.map((safe) => (
-                  safe.avatarInfo?.isHuman && 
-                  safe.trustScore?.results?.[0]?.score && safe.trustScore.results[0].score > TRUST_SCORE_THRESHOLD && (
+                  safe.isEligible && (
                     <div key={safe.safeAddress} style={{ backgroundColor: 'rgba(69, 130, 193, 0.1)', padding: '16px', margin: '16px 0', borderRadius: '12px', border: '1px solid rgba(69, 130, 193, 0.2)' }}>
                       <p style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: '600', color: '#3B2E6E' }}><strong>✅ You are eligible for claiming faucet </strong></p>
                       <p style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: '450', color: '#3B2E6E' }}>Please transfer {import.meta.env.VITE_CRC_AMOUNT} CRC to Faucet contract for 0.05 Sepolia ETH</p>
