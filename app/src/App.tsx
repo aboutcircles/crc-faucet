@@ -134,16 +134,14 @@ function App() {
         setIsLoading(true)
         try {
           const apiKey = import.meta.env.VITE_SAFE_API_KEY
-          console.log("api ", apiKey)
-          const privateKey = import.meta.env.VITE_PRIVATE_KEY
-          console.log("privKey ", privateKey)
-          
-          if (!apiKey || !privateKey) {
-            console.error('Missing environment variables: VITE_SAFE_API_KEY or VITE_PRIVATE_KEY')
+
+
+          if (!apiKey) {
+            console.error('Missing environment variables: VITE_SAFE_API_KEY')
             return
           }
 
-          const result = await checkSafesAndAvatars(address, apiKey, privateKey)
+          const result = await checkSafesAndAvatars(address, apiKey)
           result.forEach((safe, index) => {
             console.log(`Safe #${index + 1} Avatar Info:`, safe.avatarInfo)
           })

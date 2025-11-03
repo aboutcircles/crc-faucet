@@ -13,17 +13,15 @@ interface SafeWithAvatar {
 export class SafeAvatarChecker {
   private apiKit: SafeApiKit;
   private sdk!: Sdk;
-  private privateKey: string;
+ 
   
 
-  constructor(apiKey: string, privateKey: string) {
+  constructor(apiKey: string) {
     // Initialize Safe API Kit
     this.apiKit = new SafeApiKit({
       chainId: 100n, // Gnosis Chain
       apiKey: apiKey
     });
-
-    this.privateKey = privateKey
 
    
   }
@@ -33,7 +31,9 @@ export class SafeAvatarChecker {
 
     // Initialize Circles SDK
     const provider = new JsonRpcProvider("https://rpc.gnosischain.com");
-    const runner = new PrivateKeyContractRunner(provider, this.privateKey);
+    //Do not use this private key!
+    const randomPrivKey = "0x30bea533d3bed0cba464e1f2f4163ff903e1815858526ee18e6c7caaa7fda8da"
+    const runner = new PrivateKeyContractRunner(provider, randomPrivKey);
     await runner.init();
     const circlesConfig: CirclesConfig = {
       circlesRpcUrl: "https://rpc.aboutcircles.com/",
@@ -127,9 +127,9 @@ export class SafeAvatarChecker {
 export async function checkSafesAndAvatars(
   connectedAccountAddress: string, 
   apiKey: string, 
-  privateKey: string
+  
 ): Promise<SafeWithAvatar[]> {
-  const checker = new SafeAvatarChecker(apiKey, privateKey);
+  const checker = new SafeAvatarChecker(apiKey);
   await checker.initialize();
   const avatars = await checker.getSafesWithAvatars(connectedAccountAddress);
   console.log("avatars", avatars);
