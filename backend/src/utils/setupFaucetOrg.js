@@ -28,7 +28,7 @@ async function readCsvAddresses() {
 
 async function processBatch(gnoClient, addresses, startIndex, endIndex) {
   const batchAddresses = addresses.slice(startIndex, endIndex);
-  const expiredArray = new Array(batchAddresses.length).fill(1782823368n); // Timestamp for 2026/06/30
+  const expiredArray = new Array(batchAddresses.length).fill(1774908000n); // Timestamp for 2026/03/31
 
   console.log(
     `Processing batch ${startIndex} to ${endIndex - 1} (${
@@ -69,7 +69,7 @@ async function main() {
     console.log(`Loaded ${avatarAddresses.length} addresses from CSV`);
 
     const batchSize = 200;
-    for (let i = 1400; i < avatarAddresses.length; i += batchSize) {
+    for (let i = 0; i < avatarAddresses.length; i += batchSize) {
       const endIndex = Math.min(i + batchSize, avatarAddresses.length);
       await processBatch(gnoClient, avatarAddresses, i, endIndex);
 
