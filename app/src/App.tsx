@@ -328,7 +328,7 @@ function App() {
                           <span style={{ color: safe.avatarInfo?.isHuman ? '#4582C1' : '#F19488', fontFamily: 'Inter, system-ui, sans-serif' }}>
                             {safe.avatarInfo?.isHuman ? 
                               'Registered human' : 
-                              'Not registered as human, please register as human first'
+                              'Not registered as human, register with Metri now: https://app.metri.xyz/'                
                             }
                           </span>
                         </div>
@@ -377,12 +377,29 @@ function App() {
                   </>
                 ) : (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ fontWeight: '600', color: '#3B2E6E', fontFamily: 'Inter, system-ui, sans-serif' }}>Status</span>
-                    <span style={{ color: '#F19488', fontFamily: 'Inter, system-ui, sans-serif' }}>Connected address is not part of any Circle account 😞</span>
+                  <span style={{ fontWeight: '600', color: '#3B2E6E', fontFamily: 'Inter, system-ui, sans-serif' }}>Status</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ color: '#F19488', fontFamily: 'Inter, system-ui, sans-serif' }}>Address is not related to any Circles account 😞</span>
+                    <button 
+                      style={{ 
+                        color: '#F7F3EF', 
+                        fontFamily: 'Inter, system-ui, sans-serif',
+                        background: '#F19488',
+                        border: 'none',
+                        padding: 10,
+                        cursor: 'pointer',
+                       
+                      }}
+                      onClick={() => window.open("https://app.metri.xyz/", "_blank")}
+                    >
+                      Register with Metri now
+                    </button>
                   </div>
+                </div>
                 )}
               </div>
             )}
+
             
             {isConnected && safesWithAvatars.length > 0 && (
               <div className="safes-section">
