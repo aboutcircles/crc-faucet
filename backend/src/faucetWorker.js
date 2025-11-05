@@ -26,7 +26,7 @@ async function monitorEvents() {
     const latestBlock = await gnoPublicClient.getBlockNumber();
     const toBlock = latestBlock;
     const fromBlock =
-      lastProcessedBlock === 0n ? latestBlock - 20n : lastProcessedBlock + 1n;
+      lastProcessedBlock === 0n ? latestBlock - 100n : lastProcessedBlock + 1n;
 
     console.log(`Checking blocks from ${fromBlock} to ${toBlock}`);
 
@@ -59,7 +59,7 @@ async function monitorEvents() {
 
         console.log(
           `Transfer 
-            ${formatEther(logs.args.claimTokenAmount)} ETH to ${
+            ${formatEther(log.args.claimTokenAmount)} ETH to ${
             log.args.recipient
           }. Transaction hash: ${hash}`
         );
