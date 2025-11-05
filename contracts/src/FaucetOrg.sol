@@ -13,8 +13,8 @@ contract FaucetOrg {
     /// @notice Emit when the org receives trusted CRC
     /// @param from initial sender of the transaction
     /// @param recipient reciepint for the faucet token
-    /// @param receivedAmount faucet token received amount
-    event FaucetRequested(address indexed from, address indexed recipient, uint256 indexed receivedAmount);
+    /// @param claimTokenAmount faucet token received amount
+    event FaucetRequested(address indexed from, address indexed recipient, uint256 indexed claimTokenAmount);
 
     /*//////////////////////////////////////////////////////////////
                              Errors
@@ -109,11 +109,12 @@ contract FaucetOrg {
     }
 
     /// @notice set price function
+    /// @dev x CRC / 1  token (i.e. price = 24, for each 24 CRC, you get 1 ETH)
     function setPrice(uint256 price) external onlyOwner {
         faucetTokenPriceInCRC = price;
     }
-    /// @notice set beneficiary address function
 
+    /// @notice set beneficiary address function
     function setBeneficiaryAddress(address _beneficiary) external onlyOwner {
         if (_beneficiary == address(0)) revert InvalidAddress();
         beneficiary = _beneficiary;

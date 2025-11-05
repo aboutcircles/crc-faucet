@@ -33,7 +33,7 @@ async function monitorEvents() {
     const logs = await gnoPublicClient.getContractEvents({
       abi: [
         parseAbiItem(
-          "event FaucetRequested(address indexed from, address indexed recipient)"
+          "event FaucetRequested(address indexed from, address indexed recipient, uint256 indexed claimTokenAmount)"
         ),
       ],
       address: process.env.FAUCET_ORG_CONTRACT,
@@ -48,16 +48,19 @@ async function monitorEvents() {
       for (const log of logs) {
         console.log("Processing event:", {
           recipient: log.args.recipient,
+          claimAmount: logs.args.claimTokenAmount,
           blockNumber: log.blockNumber,
         });
 
         const hash = await sepWalletClient.sendTransaction({
           to: log.args.recipient,
-          value: parseEther(process.env.SEND_ETH_VALUE),
+          value: logs.args.claimTokenAmount,
         });
 
         console.log(
-          `Transfer ${process.env.SEND_ETH_VALUE} ETH transaction hash: ${hash}`
+          `Transfer ${parseAbiItem(
+            logs.args.claimTokenAmount
+          )} ETH transaction hash: ${hash}`
         );
       }
     }
