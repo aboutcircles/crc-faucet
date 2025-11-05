@@ -48,13 +48,13 @@ async function monitorEvents() {
       for (const log of logs) {
         console.log("Processing event:", {
           recipient: log.args.recipient,
-          claimAmount: logs.args.claimTokenAmount,
+          claimAmount: log.args.claimTokenAmount,
           blockNumber: log.blockNumber,
         });
 
         const hash = await sepWalletClient.sendTransaction({
           to: log.args.recipient,
-          value: logs.args.claimTokenAmount,
+          value: log.args.claimTokenAmount,
         });
 
         console.log(
