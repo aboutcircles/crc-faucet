@@ -40,11 +40,11 @@ async function processBatch(gnoClient, addresses, startIndex, endIndex) {
     address: process.env.FAUCET_ORG_CONTRACT,
     abi: [
       parseAbiItem(
-        "function setTrust(address[] calldata accounts, uint96[] calldata expired) public"
+        "function setTrust(address[] calldata accounts, expired) public"
       ),
     ],
     functionName: "setTrust",
-    args: [batchAddresses, expiredArray],
+    args: [batchAddresses, 1774908000n],
   });
 
   const txHash = await gnoClient.writeContract(request);
