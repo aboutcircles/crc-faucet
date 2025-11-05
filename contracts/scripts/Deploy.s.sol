@@ -5,14 +5,15 @@ import {Script} from "forge-std/Script.sol";
 import {FaucetOrg} from "../src/FaucetOrg.sol";
 
 contract FaucetOrgScript is Script {
-    FaucetOrg public faucetOrg; 
+    FaucetOrg public faucetOrg; // 0x007E9156c7136ae95Ce5ef3BC2275f7eec07C101
 
     function setUp() public {}
 
     function run() public {
         vm.startBroadcast("");
 
-        faucetOrg = new FaucetOrg("Sepolia ETH", 24, 1 ether);
+        address beneficiary = 0x1ba1594906461AeBA65b52A914E1545B5F928cCc;
+        faucetOrg = new FaucetOrg("Sepolia ETH", 24, 1 ether, beneficiary);
 
         vm.stopBroadcast();
     }

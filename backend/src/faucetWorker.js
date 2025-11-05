@@ -3,7 +3,7 @@ import {
   createWalletClient,
   createPublicClient,
   http,
-  parseEther,
+  formatEther,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { gnosis, sepolia } from "viem/chains";
@@ -58,9 +58,10 @@ async function monitorEvents() {
         });
 
         console.log(
-          `Transfer ${parseAbiItem(
-            logs.args.claimTokenAmount
-          )} ETH transaction hash: ${hash}`
+          `Transfer 
+            ${formatEther(logs.args.claimTokenAmount)} ETH to ${
+            log.args.recipient
+          }. Transaction hash: ${hash}`
         );
       }
     }

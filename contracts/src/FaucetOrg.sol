@@ -89,12 +89,13 @@ contract FaucetOrg {
         _;
     }
 
-    constructor(string memory _faucetToken, uint256 _tokenPrice, uint256 _maxTokenClaimableAmount) {
+    constructor(string memory _faucetToken, uint256 _tokenPrice, uint256 _maxTokenClaimableAmount, address _beneficiary) {
         faucetToken = _faucetToken;
         owner = msg.sender;
         faucetTokenPriceInCRC = _tokenPrice;
         maxTokenClaimableAmount = _maxTokenClaimableAmount;
-
+        beneficiary = _beneficiary;
+        
         HUB.registerOrganization("Circles-Faucet", 0);
     }
 
@@ -162,13 +163,13 @@ contract FaucetOrg {
             if (data.length == 0) {
                 emit FaucetRequested(from, from, claimableTokenAmount);
                 lastClaimTimestamp[from] = block.timestamp;
-                HUB.safeTransferFrom(from, beneficiary, id, value, "");
+                HUB.safeTransferFrom(address(this), beneficiary, id, value, "");
                 return this.onERC1155Received.selector;
             } else {
                 address recipient = abi.decode(data, (address));
                 emit FaucetRequested(from, recipient, claimableTokenAmount);
                 lastClaimTimestamp[from] = block.timestamp;
-                HUB.safeTransferFrom(from, beneficiary, id, value, "");
+                HUB.safeTransferFrom(address(this), beneficiary, id, value, "");
                 return this.onERC1155Received.selector;
             }
         }
@@ -209,15 +210,19 @@ contract FaucetOrg {
             if (!HUB.isTrusted(address(this), address(uint160(ids[i])))) {
                 revert InvalidTokenId(ids[i]);
             }
+            HUB.safeTransferFrom(address(this), beneficiary, ids[i], values[i], "");
 
             unchecked {
                 ++i;
             }
         }
 
-        lastClaimTimestamp[from] = block.timestamp;
+        
         address recipient = abi.decode(data, (address));
         emit FaucetRequested(from, recipient, totalValue);
+        lastClaimTimestamp[from] = block.timestamp;
+        
+
 
         return this.onERC1155Received.selector;
     }
