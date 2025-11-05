@@ -250,13 +250,25 @@ html, body {
 }
 
 @keyframes loading-animation {
-  0% { content: 'Processing.'; }
-  33% { content: 'Processing..'; }
-  66% { content: 'Processing...'; }
-  100% { content: 'Processing.'; }
+  0% { content: '.'; }
+  33% { content: '..'; }
+  66% { content: '...'; }
+  100% { content: '.'; }
 }
 
 .loading-text::after {
   content: '...';
   animation: loading-animation 1.5s infinite;
+}
+
+.info-box {
+  width: 100%;
+  max-width: 600px;
+  border: 1px solid #3B2E6E;
+  border-radius: 5px;
+  padding: 15px;
+  margin: 15px 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  color: #3B2E6E;
+  box-shadow: 0 4px 16px rgba(59, 46, 110, 0.1);
 }

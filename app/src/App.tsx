@@ -1,10 +1,11 @@
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { checkSafesAndAvatars } from './safeAvatarChecker'
 import './App.css'
 import CirclesLogo from './assets/CirclesLogo.png'
 import { createPublicClient, http, parseAbiItem, parseEther } from 'viem';
 import { sepolia, gnosis } from 'viem/chains';
+import QRCode from 'qrcode';
 
 interface SafeWithAvatar {
   safeAddress: string;
@@ -18,8 +19,52 @@ interface SafeWithAvatar {
   isEligible?: boolean;
 }
 
-const TRUST_SCORE_THRESHOLD = Number(import.meta.env.VITE_TRUST_SCORE_THRESHOLD) || 40;
+const TRUST_SCORE_THRESHOLD = Number(import.meta.env.VITE_TRUST_SCORE_THRESHOLD) || 50;
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
+
+// QR Code Component
+function QRCodeComponent({ url }: { url: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (canvasRef.current && url) {
+      QRCode.toCanvas(canvasRef.current, url, {
+        width: 200,
+        margin: 2,
+        color: {
+          dark: '#3B2E6E',
+          light: '#FFFFFF'
+        }
+      }, (error) => {
+        if (error) console.error('QR Code generation error:', error);
+      });
+    }
+  }, [url]);
+
+  return (
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      marginTop: '16px',
+      padding: '16px',
+      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      borderRadius: '8px',
+      border: '1px solid rgba(59, 46, 110, 0.2)'
+    }}>
+      <p style={{ 
+        margin: '0 0 12px 0', 
+        color: '#3B2E6E', 
+        fontFamily: 'Inter, system-ui, sans-serif',
+        fontSize: '14px',
+        fontWeight: '500'
+      }}>
+        Or scan this QR code:
+      </p>
+      <canvas ref={canvasRef} style={{ border: '1px solid #E0E0E0', borderRadius: '4px' }} />
+    </div>
+  );
+}
 
 function App() {
   const { address, isConnected } = useAccount()
@@ -33,19 +78,46 @@ function App() {
   const [ethBalanceTracking, setEthBalanceTracking] = useState<{[key: string]: { initial: bigint, tracking: boolean }}>({})
   const [ethTransferSuccess, setEthTransferSuccess] = useState<{[key: string]: boolean}>({})
   const [activeTab, setActiveTab] = useState('claim');
+  const [claimAmounts, setClaimAmounts] = useState<{[key: string]: string}>({});
+  const [tokenPrice, setTokenPrice] = useState<number>(24); // Default fallback price
+  const [timers, setTimers] = useState<{[key: string]: NodeJS.Timeout | null}>({});
+  const [autoProcessing, setAutoProcessing] = useState<{[key: string]: boolean}>({});
 
 
   const isValidEthereumAddress = (address: string): boolean => {
     return /^0x[a-fA-F0-9]{40}$/.test(address) // TODO: use ethers.utils.isAddress() to check for validity
   }
 
-  const generateMetriUrl = (recipientAddress: string): string => {
+  const queryTokenPrice = async (): Promise<number> => {
+    try {
+      const gnosisPublicClient = createPublicClient({
+        chain: gnosis,
+        transport: http(import.meta.env.VITE_GNOSIS_RPC)
+      })
+      
+      const faucetOrgAddress = import.meta.env.VITE_FAUCET_ORG_ADDRESS as `0x${string}`
+      
+      const price = await gnosisPublicClient.readContract({
+        address: faucetOrgAddress,
+        abi: [parseAbiItem("function faucetTokenPriceInCRC() external returns(uint256 price)")],
+        functionName: 'faucetTokenPriceInCRC'
+      })
+      
+      return Number(price)
+ 
+    } catch (error) {
+      console.error('Error querying token price:', error)
+      return 24 // fallback price
+    }
+  }
+
+   const generateMetriUrl = (recipientAddress: string, claimAmount: string): string => {
     // Remove 0x prefix and pad to 32 bytes (64 hex chars)
     const addressWithoutPrefix = recipientAddress.slice(2)
     const abiEncodedAddress = '0x' + '0'.repeat(24) + addressWithoutPrefix
     
     const faucetOrgAddress = import.meta.env.VITE_FAUCET_ORG_ADDRESS
-    const crcAmount = import.meta.env.VITE_CRC_AMOUNT
+    const crcAmount = tokenPrice * parseFloat(claimAmount)
     
     return `https://app.metri.xyz/transfer/${faucetOrgAddress}/crc/${crcAmount}?data=${abiEncodedAddress}`
   }
@@ -175,6 +247,13 @@ function App() {
     }
   }
 
+  const handleClaimAmountChange = (safeAddress: string, amount: string) => {
+    setClaimAmounts(prev => ({
+      ...prev,
+      [safeAddress]: amount
+    }))
+  }
+
   useEffect(() => {
     const fetchSafesAndAvatars = async () => {
       if (isConnected && address) {
@@ -223,6 +302,75 @@ function App() {
 
     fetchSafesAndAvatars()
   }, [isConnected, address])
+
+  // Load token price when component mounts
+  useEffect(() => {
+    const loadTokenPrice = async () => {
+      try {
+        const price = await queryTokenPrice()
+        setTokenPrice(price)
+      } catch (error) {
+        console.error('Error loading token price:', error)
+        // Keep default fallback price
+      }
+    }
+    loadTokenPrice()
+  }, [])
+
+  // Start timer when claim amount is selected
+  useEffect(() => {
+    Object.keys(claimAmounts).forEach(safeAddress => {
+      const recipientAddress = recipientAddresses[safeAddress];
+      
+      // Only start timer if recipient address exists and not already tracking/processing
+      if (recipientAddress && 
+          !ethBalanceTracking[recipientAddress]?.tracking && 
+          !autoProcessing[recipientAddress]) {
+        
+        // Clear existing timer for this address
+        if (timers[recipientAddress]) {
+          clearTimeout(timers[recipientAddress]!);
+        }
+        
+        // Start new 30-second timer
+        const timer = setTimeout(() => {
+          // Auto-trigger ETH balance tracking
+          setAutoProcessing(prev => ({
+            ...prev,
+            [recipientAddress]: true
+          }));
+          trackEthBalance(recipientAddress);
+        }, 30000); // 30 seconds
+        
+        setTimers(prev => ({
+          ...prev,
+          [recipientAddress]: timer
+        }));
+      }
+    });
+    
+    return () => {
+      // Cleanup timers on unmount
+      Object.values(timers).forEach(timer => {
+        if (timer) clearTimeout(timer);
+      });
+    };
+  }, [claimAmounts, recipientAddresses])
+
+  // Clear autoProcessing when tracking completes
+  useEffect(() => {
+    Object.keys(autoProcessing).forEach(recipientAddress => {
+      // If was auto-processing but now tracking is complete, clear auto-processing state
+      if (autoProcessing[recipientAddress] && 
+          ethBalanceTracking[recipientAddress] && 
+          !ethBalanceTracking[recipientAddress].tracking) {
+        setAutoProcessing(prev => ({
+          ...prev,
+          [recipientAddress]: false
+        }));
+      }
+    });
+  }, [ethBalanceTracking, autoProcessing])
 
   return (
     <div className="app">
@@ -293,15 +441,7 @@ function App() {
             )}
             
             {isConnected && (
-              <div className="circles-profile-box" style={{ 
-                border: '1px solid #3B2E6E', 
-                borderRadius: '12px', 
-                padding: '24px', 
-                margin: '20px 0',
-                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                color: '#3B2E6E',
-                boxShadow: '0 4px 16px rgba(59, 46, 110, 0.1)'
-              }}>
+              <div className="circles-profile-box info-box">
                 <h3 style={{ marginTop: '0', marginBottom: '16px', color: '#3B2E6E', fontFamily: 'Inter, system-ui, sans-serif', fontWeight: '700' }}>Your Circles Profile</h3>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -402,12 +542,11 @@ function App() {
 
             
             {isConnected && safesWithAvatars.length > 0 && (
-              <div className="safes-section">
+              <div className="operation info-box">
                 {safesWithAvatars.map((safe) => (
                   safe.isEligible && (
-                    <div key={safe.safeAddress} style={{ backgroundColor: 'rgba(69, 130, 193, 0.1)', padding: '16px', margin: '16px 0', borderRadius: '12px', border: '1px solid rgba(69, 130, 193, 0.2)' }}>
+                    <div key={safe.safeAddress} className="info-box" style={{ backgroundColor: 'rgba(69, 130, 193, 0.1)', border: '1px solid rgba(69, 130, 193, 0.2)' }}>
                       <p style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: '600', color: '#3B2E6E' }}><strong>✅ You are eligible for claiming faucet </strong></p>
-                      <p style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: '450', color: '#3B2E6E' }}>Please transfer {import.meta.env.VITE_CRC_AMOUNT} CRC to Faucet contract for 0.05 Sepolia ETH</p>
                       <div style={{ marginTop: '10px' }}>
                         <label htmlFor={`recipient-${safe.safeAddress}`} style={{ display: 'block', marginBottom: '8px', color: '#3B2E6E', fontFamily: 'Inter, system-ui, sans-serif', fontWeight: '500' }}>
                           Enter your recipient address on Sepolia:
@@ -441,11 +580,58 @@ function App() {
                             <p style={{ color: '#4582C1', fontSize: '12px', margin: '8px 0 0 0', fontFamily: 'Inter, system-ui, sans-serif' }}>
                               ✅ Valid Ethereum address
                             </p>
+                            <div style={{ 
+                              display: 'flex', 
+                              justifyContent: 'flex-end', 
+                              alignItems: 'center',
+                              gap: '12px',
+                              marginTop: '16px',
+                              padding: '12px 0'
+                            }}>
+                              <span style={{ 
+                                fontFamily: 'Inter, system-ui, sans-serif', 
+                                fontWeight: '500', 
+                                color: '#3B2E6E' 
+                              }}>
+                                I want to claim
+                              </span>
+                              <select
+                                value={claimAmounts[safe.safeAddress] || '0.25'}
+                                onChange={(e) => handleClaimAmountChange(safe.safeAddress, e.target.value)}
+                                style={{
+                                  padding: '8px 12px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #3B2E6E',
+                                  backgroundColor: '#F7F3EF',
+                                  color: '#3B2E6E',
+                                  fontFamily: 'Inter, system-ui, sans-serif',
+                                  fontWeight: '500',
+                                  fontSize: '14px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <option value="0.25">0.25 ETH</option>
+                                <option value="0.5">0.5 ETH</option>
+                                <option value="0.75">0.75 ETH</option>
+                                <option value="1">1 ETH</option>
+                              </select>
+                            </div>
                             <a
-                              href={generateMetriUrl(recipientAddresses[safe.safeAddress])}
+                              href={generateMetriUrl(recipientAddresses[safe.safeAddress], claimAmounts[safe.safeAddress] || '0.25')}
                               target="_blank"
                               rel="noopener noreferrer"
-                              onClick={() => trackEthBalance(recipientAddresses[safe.safeAddress])}
+                              onClick={() => {
+                                const recipientAddress = recipientAddresses[safe.safeAddress];
+                                // Clear timer if user manually clicks
+                                if (timers[recipientAddress]) {
+                                  clearTimeout(timers[recipientAddress]!);
+                                  setTimers(prev => ({
+                                    ...prev,
+                                    [recipientAddress]: null
+                                  }));
+                                }
+                                trackEthBalance(recipientAddress);
+                              }}
                               style={{
                                 display: 'inline-block',
                                 marginTop: '16px',
@@ -463,7 +649,8 @@ function App() {
                             >
                               Transfer with Metri now
                             </a>
-                            {ethBalanceTracking[recipientAddresses[safe.safeAddress]]?.tracking && (
+                            <QRCodeComponent url={generateMetriUrl(recipientAddresses[safe.safeAddress], claimAmounts[safe.safeAddress] || '0.25')} />
+                            {(ethBalanceTracking[recipientAddresses[safe.safeAddress]]?.tracking || autoProcessing[recipientAddresses[safe.safeAddress]]) && (
                               <div style={{ 
                                 marginTop: '16px', 
                                 padding: '16px', 
@@ -478,6 +665,10 @@ function App() {
                                   fontWeight: '600',
                                   fontFamily: 'Inter, system-ui, sans-serif'
                                 }}>
+                                  {autoProcessing[recipientAddresses[safe.safeAddress]] 
+                                    ? 'Processing automatically' 
+                                    : 'Processing'
+                                  }
                                 </p>                    
                               </div>
                             )}
@@ -496,7 +687,7 @@ function App() {
                                   fontWeight: '700',
                                   fontFamily: 'Inter, system-ui, sans-serif'
                                 }}>
-                                  🎉 You received 0.05 ETH!
+                                  🎉 You received {claimAmounts[safe.safeAddress]}!
                                 </p>
                                 <a 
                                   href={`https://sepolia.etherscan.io/address/${recipientAddresses[safe.safeAddress]}`}
@@ -530,7 +721,7 @@ function App() {
             <p style={{ color: '#3B2E6E', lineHeight: '1.6', marginBottom: '16px', fontSize: '16px' }}>1. The connected account has to be one of the signer of Circles</p>
             <p style={{ color: '#3B2E6E', lineHeight: '1.6', marginBottom: '16px', fontSize: '16px' }}>2. The Circles account has to be registered as Human</p>
             <p style={{ color: '#3B2E6E', lineHeight: '1.6', marginBottom: '16px', fontSize: '16px' }}>3. The Trust score of the Circles account is more than 50 (This is an experimental feature)</p>
-            <p style={{ color: '#3B2E6E', lineHeight: '1.6', marginBottom: '16px', fontSize: '16px' }}>4. Every Circles account can send 24 CRC and get 0.05 Sepolia ETH per day</p>
+            <p style={{ color: '#3B2E6E', lineHeight: '1.6', marginBottom: '16px', fontSize: '16px' }}>4. Every Circles account can send maximum 24 CRC for 1 Sepolia ETH per day</p>
             <h2 style={{ color: '#3B2E6E', fontFamily: 'Inter, system-ui, sans-serif', fontWeight: '500', marginBottom: '24px' }}>Find out more about Circles: <a href="https://aboutcircles.com" target="_blank" rel="noopener noreferrer">https://aboutcircles.com</a></h2>          </div>
         )}
       </div>
