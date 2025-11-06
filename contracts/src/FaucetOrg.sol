@@ -64,7 +64,7 @@ contract FaucetOrg {
     string public faucetToken;
 
     /// @notice how much does 1 faucet token can get per X CRC token
-    uint256 public faucetTokenPriceInCRC; // X CRC / 1 FaucetToken (i.e. 24 * 10e18 = 24 CRC per 1 wei)
+    uint256 public faucetTokenPriceInCRC; // X CRC / 1 FaucetToken (i.e. 24 CRC/ETH = 24 CRC per 1 ETH)
 
     /// @notice beneficiary address that receives the token transferred to org
     address public beneficiary;
@@ -117,7 +117,7 @@ contract FaucetOrg {
     }
 
     /// @notice set price function
-    /// @dev x CRC / 1  token (i.e. price = 24, for each 24 CRC, you get 1 ETH)
+    /// @dev x CRC / 1  token (i.e. price = 24 CRC/ETH, for each 24 CRC, you get 1 ETH)
     function setPrice(uint256 price) external onlyOwner {
         faucetTokenPriceInCRC = price;
     }

@@ -5,7 +5,7 @@ import {Script} from "forge-std/Script.sol";
 import {FaucetOrg} from "../src/FaucetOrg.sol";
 
 contract FaucetOrgScript is Script {
-    FaucetOrg public faucetOrg; // 0x0b2983927daC0fffADeBae2c012b3296c44621DF.
+    FaucetOrg public faucetOrg; // 0x0dfa95fdAD98d1B44b2dB4FC513657e5426b1006.
 
     function setUp() public {}
 
