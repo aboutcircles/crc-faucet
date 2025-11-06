@@ -29,8 +29,8 @@ contract FaucetOrg {
     /// @notice Thrown when a non-owner calls an owner-only function.
     error OnlyOwner();
 
-    /// @notice Throw when recieved CRC value is more than max claimable amount
-    error ExceedMaxClaimableAmount(uint256 receivedCRC);
+    /// @notice Throw when recieved CRC value is more than price * maxTokenClaimableAmount
+    error ExceedMaxCRCAmount(uint256 receivedCRC);
 
     /// @notice Throw when recieved token ID is not trusted by org
     error InvalidTokenId(uint256 Id);
@@ -47,6 +47,8 @@ contract FaucetOrg {
     /// @notice Hub V2 contract adress
     IHub public constant HUB = IHub(address(0xc12C1E50ABB450d6205Ea2C3Fa861b3B834d13e8));
 
+    uint256 public constant FAUCET_TOKEN_DECIMAL = 18;
+
     /*//////////////////////////////////////////////////////////////
                             Storage
     //////////////////////////////////////////////////////////////*/
@@ -62,13 +64,13 @@ contract FaucetOrg {
     string public faucetToken;
 
     /// @notice how much does faucet token can get per X CRC token
-    uint256 public faucetTokenPriceInCRC; // X CRC / FaucetToken (i.e. 24 CRC / ETH)
+    uint256 public faucetTokenPriceInCRC; // X CRC / FaucetToken (i.e. 24 = 24 CRC per ETH)
 
     /// @notice beneficiary address that receives the token transferred to org
     address public beneficiary;
 
     /// @notice maximum faucet token amount that is claimable
-    /// @dev in unit 10**18
+    /// @dev in unit 10**FAUCET_TOKEN_DECIMAL
     uint256 public maxTokenClaimableAmount;
 
     /*//////////////////////////////////////////////////////////////
@@ -89,13 +91,18 @@ contract FaucetOrg {
         _;
     }
 
-    constructor(string memory _faucetToken, uint256 _tokenPrice, uint256 _maxTokenClaimableAmount, address _beneficiary) {
+    constructor(
+        string memory _faucetToken,
+        uint256 _tokenPrice,
+        uint256 _maxTokenClaimableAmount,
+        address _beneficiary
+    ) {
         faucetToken = _faucetToken;
         owner = msg.sender;
         faucetTokenPriceInCRC = _tokenPrice;
         maxTokenClaimableAmount = _maxTokenClaimableAmount;
         beneficiary = _beneficiary;
-        
+
         HUB.registerOrganization("Circles-Faucet", 0);
     }
 
@@ -157,7 +164,7 @@ contract FaucetOrg {
         } else if ((block.timestamp - lastClaimTimestamp[from]) < 1 days) {
             revert LastClaimLessThan24Hrs();
         } else if (value > (faucetTokenPriceInCRC * maxTokenClaimableAmount)) {
-            revert ExceedMaxClaimableAmount(value);
+            revert ExceedMaxCRCAmount(value);
         } else {
             uint256 claimableTokenAmount = value / faucetTokenPriceInCRC;
             if (data.length == 0) {
@@ -198,32 +205,28 @@ contract FaucetOrg {
             revert LastClaimLessThan24Hrs();
         }
         uint256 totalValue;
-        for (uint256 i; i < values.length;) {
-            totalValue += values[i];
-            unchecked {
-                ++i;
-            }
-        }
-        if (totalValue > (faucetTokenPriceInCRC * maxTokenClaimableAmount)) revert ExceedMaxClaimableAmount(totalValue);
 
         for (uint256 i; i < ids.length;) {
+            // The tx will revert if any of the ids is not trusted by this org
             if (!HUB.isTrusted(address(this), address(uint160(ids[i])))) {
                 revert InvalidTokenId(ids[i]);
             }
-            HUB.safeTransferFrom(address(this), beneficiary, ids[i], values[i], "");
+            totalValue += values[i];
 
             unchecked {
                 ++i;
             }
         }
 
-        
+        if (totalValue > (faucetTokenPriceInCRC * maxTokenClaimableAmount)) revert ExceedMaxCRCAmount(totalValue);
+
+        HUB.safeBatchTransferFrom(address(this), beneficiary, ids, values, data);
+
         address recipient = abi.decode(data, (address));
-        emit FaucetRequested(from, recipient, totalValue);
+        uint256 claimableTokenAmount = totalValue / faucetTokenPriceInCRC;
+        emit FaucetRequested(from, recipient, claimableTokenAmount);
         lastClaimTimestamp[from] = block.timestamp;
-        
 
-
-        return this.onERC1155Received.selector;
+        return this.onERC1155BatchReceived.selector;
     }
 }
