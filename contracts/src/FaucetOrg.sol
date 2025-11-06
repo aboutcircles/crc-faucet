@@ -63,14 +63,14 @@ contract FaucetOrg {
     /// @notice name of the faucet token to claim for
     string public faucetToken;
 
-    /// @notice how much does faucet token can get per X CRC token
-    uint256 public faucetTokenPriceInCRC; // X CRC / FaucetToken (i.e. 24 = 24 CRC per ETH)
+    /// @notice how much does 1 faucet token can get per X CRC token
+    uint256 public faucetTokenPriceInCRC; // X CRC / 1 FaucetToken (i.e. 24 * 10e18 = 24 CRC per 1 wei)
 
     /// @notice beneficiary address that receives the token transferred to org
     address public beneficiary;
 
     /// @notice maximum faucet token amount that is claimable
-    /// @dev in unit 10**FAUCET_TOKEN_DECIMAL
+    /// @dev in wei
     uint256 public maxTokenClaimableAmount;
 
     /*//////////////////////////////////////////////////////////////
@@ -159,27 +159,29 @@ contract FaucetOrg {
         onlyHub
         returns (bytes4)
     {
+        
         if (!HUB.isTrusted(address(this), address(uint160(id)))) {
             revert InvalidTokenId(id);
         } else if ((block.timestamp - lastClaimTimestamp[from]) < 1 days) {
             revert LastClaimLessThan24Hrs();
-        } else if (value > (faucetTokenPriceInCRC * maxTokenClaimableAmount)) {
+        } else if (value > ((faucetTokenPriceInCRC * maxTokenClaimableAmount) / (10 ** FAUCET_TOKEN_DECIMAL))) {
             revert ExceedMaxCRCAmount(value);
         } else {
-            uint256 claimableTokenAmount = value / faucetTokenPriceInCRC;
-            if (data.length == 0) {
-                emit FaucetRequested(from, from, claimableTokenAmount);
-                lastClaimTimestamp[from] = block.timestamp;
-                HUB.safeTransferFrom(address(this), beneficiary, id, value, "");
-                return this.onERC1155Received.selector;
+
+            address recipient;
+            if (data.length != 0) {
+                recipient = abi.decode(data, (address));
             } else {
-                address recipient = abi.decode(data, (address));
-                emit FaucetRequested(from, recipient, claimableTokenAmount);
-                lastClaimTimestamp[from] = block.timestamp;
-                HUB.safeTransferFrom(address(this), beneficiary, id, value, "");
-                return this.onERC1155Received.selector;
+                recipient = from;
             }
+            uint256 claimableTokenAmount = (value * 10 ** FAUCET_TOKEN_DECIMAL) / faucetTokenPriceInCRC;
+            emit FaucetRequested(from, recipient, claimableTokenAmount);
+            lastClaimTimestamp[from] = block.timestamp;
+            HUB.safeTransferFrom(address(this), beneficiary, id, value, "");
+            return this.onERC1155Received.selector;
         }
+
+
     }
 
     /// @notice Batch token CRC receipt handler (called by Hub), and emit FaucetRequested event
@@ -218,15 +220,20 @@ contract FaucetOrg {
             }
         }
 
-        if (totalValue > (faucetTokenPriceInCRC * maxTokenClaimableAmount)) revert ExceedMaxCRCAmount(totalValue);
+        if (totalValue > ((faucetTokenPriceInCRC * maxTokenClaimableAmount) / (10 ** FAUCET_TOKEN_DECIMAL))) {
+            revert ExceedMaxCRCAmount(totalValue);
+        }
+        address recipient;
 
-        HUB.safeBatchTransferFrom(address(this), beneficiary, ids, values, data);
-
-        address recipient = abi.decode(data, (address));
-        uint256 claimableTokenAmount = totalValue / faucetTokenPriceInCRC;
+        if (data.length != 0) {
+            recipient = abi.decode(data, (address));
+        } else {
+            recipient = from;
+        }
+        uint256 claimableTokenAmount = (totalValue * 10 ** FAUCET_TOKEN_DECIMAL) / faucetTokenPriceInCRC;
         emit FaucetRequested(from, recipient, claimableTokenAmount);
         lastClaimTimestamp[from] = block.timestamp;
-
+        HUB.safeBatchTransferFrom(address(this), beneficiary, ids, values, data);
         return this.onERC1155BatchReceived.selector;
     }
 }

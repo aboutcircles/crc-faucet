@@ -2,7 +2,7 @@
 
 This is a Foundry project for the `FaucetOrg.sol` smart contract.
 
-Deployment on Gnosis Chain: `0xb225E9d8A67363F7759dbeBF63bDF9B151aB2e02`
+Deployment on Gnosis Chain: `0x38Cf90493Ff959CCfdCA49dA227a3aA660F34E01`
 
 ## Getting Started
 
