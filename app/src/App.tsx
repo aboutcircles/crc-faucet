@@ -720,7 +720,7 @@ function App() {
             <h2 style={{ color: '#3B2E6E', fontFamily: 'Inter, system-ui, sans-serif', fontWeight: '700', marginBottom: '24px' }}>How it works</h2>
             <p style={{ color: '#3B2E6E', lineHeight: '1.6', marginBottom: '16px', fontSize: '16px' }}>1. The connected account has to be one of the signer of Circles</p>
             <p style={{ color: '#3B2E6E', lineHeight: '1.6', marginBottom: '16px', fontSize: '16px' }}>2. The Circles account has to be registered as Human</p>
-            <p style={{ color: '#3B2E6E', lineHeight: '1.6', marginBottom: '16px', fontSize: '16px' }}>3. The Trust score of the Circles account is more than 50 (This is an experimental feature)</p>
+            <p style={{ color: '#3B2E6E', lineHeight: '1.6', marginBottom: '16px', fontSize: '16px' }}>3. The Trust score of the Circles account is more than 50. <a href='https://aboutcircles.github.io/CirclesTools/trustScoreExplorer.html'>Click here to explorer How Trust Score works</a></p>
             <p style={{ color: '#3B2E6E', lineHeight: '1.6', marginBottom: '16px', fontSize: '16px' }}>4. Every Circles account can send maximum 24 CRC for 1 Sepolia ETH per day</p>
             <h2 style={{ color: '#3B2E6E', fontFamily: 'Inter, system-ui, sans-serif', fontWeight: '500', marginBottom: '24px' }}>Find out more about Circles: <a href="https://aboutcircles.com" target="_blank" rel="noopener noreferrer">https://aboutcircles.com</a></h2>          </div>
         )}
