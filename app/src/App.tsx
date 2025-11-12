@@ -79,7 +79,7 @@ function App() {
   const [ethTransferSuccess, setEthTransferSuccess] = useState<{[key: string]: boolean}>({})
   const [activeTab, setActiveTab] = useState('claim');
   const [claimAmounts, setClaimAmounts] = useState<{[key: string]: string}>({});
-  const [tokenPrice, setTokenPrice] = useState<number>(24); // Default fallback price
+  const [tokenPrice, setTokenPrice] = useState<number>(Number(24000000000000000000)); // Default fallback price
   const [timers, setTimers] = useState<{[key: string]: NodeJS.Timeout | null}>({});
   const [autoProcessing, setAutoProcessing] = useState<{[key: string]: boolean}>({});
 
@@ -104,10 +104,10 @@ function App() {
       })
       
       return Number(price)
- 
+      
     } catch (error) {
       console.error('Error querying token price:', error)
-      return 24 // fallback price
+      return Number(24000000000000000000) // fallback price
     }
   }
 
@@ -115,9 +115,9 @@ function App() {
     // Remove 0x prefix and pad to 32 bytes (64 hex chars)
     const addressWithoutPrefix = recipientAddress.slice(2)
     const abiEncodedAddress = '0x' + '0'.repeat(24) + addressWithoutPrefix
-    
+
     const faucetOrgAddress = import.meta.env.VITE_FAUCET_ORG_ADDRESS
-    const crcAmount = tokenPrice * parseFloat(claimAmount)
+    const crcAmount = tokenPrice * parseFloat(claimAmount) / Number(1000000000000000000 )
     
     return `https://app.metri.xyz/transfer/${faucetOrgAddress}/crc/${crcAmount}?data=${abiEncodedAddress}`
   }
