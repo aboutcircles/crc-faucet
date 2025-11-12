@@ -1,66 +1,35 @@
-## Foundry
+# Faucet Org
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+This is a Foundry project for the `FaucetOrg.sol` smart contract.
 
-Foundry consists of:
+Deployment on Gnosis Chain: `0x0dfa95fdAD98d1B44b2dB4FC513657e5426b1006`
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## Getting Started
 
-## Documentation
+### Prerequisites
 
-https://book.getfoundry.sh/
+- [Foundry](https://getfoundry.sh/)
 
-## Usage
+### Compiling the Contracts
 
-### Build
+To compile the contracts, run the following command:
 
-```shell
-$ forge build
+```bash
+forge build
 ```
 
-### Test
+### Running Tests
 
-```shell
-$ forge test
+To run the tests, run the following command:
+
+```bash
+forge test
 ```
 
-### Format
+### Deployment
 
-```shell
-$ forge fmt
-```
+To deploy the contracts, you can use the `Deploy.s.sol` script. Make sure to set up your `.env` file with your RPC URL and private key.
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+```bash
+forge script script/Deploy.s.sol --rpc-url <your_rpc_url> --private-key <your_private_key>
 ```

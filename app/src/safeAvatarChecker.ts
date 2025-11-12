@@ -3,6 +3,8 @@ import { Sdk } from "@circles-sdk/sdk";
 import { PrivateKeyContractRunner } from "@circles-sdk/adapter-ethers";
 import { JsonRpcProvider } from "ethers";
 import type { CirclesConfig } from '@circles-sdk/sdk';
+import { createPublicClient, http } from 'viem';
+import { gnosis } from 'viem/chains';
 
 interface SafeWithAvatar {
   safeAddress: string;
@@ -13,17 +15,15 @@ interface SafeWithAvatar {
 export class SafeAvatarChecker {
   private apiKit: SafeApiKit;
   private sdk!: Sdk;
-  private privateKey: string;
+ 
   
 
-  constructor(apiKey: string, privateKey: string) {
+  constructor(apiKey: string) {
     // Initialize Safe API Kit
     this.apiKit = new SafeApiKit({
       chainId: 100n, // Gnosis Chain
       apiKey: apiKey
     });
-
-    this.privateKey = privateKey
 
    
   }
@@ -33,7 +33,9 @@ export class SafeAvatarChecker {
 
     // Initialize Circles SDK
     const provider = new JsonRpcProvider("https://rpc.gnosischain.com");
-    const runner = new PrivateKeyContractRunner(provider, this.privateKey);
+    //Do not use this private key!
+    const randomPrivKey = "0x30bea533d3bed0cba464e1f2f4163ff903e1815858526ee18e6c7caaa7fda8da"
+    const runner = new PrivateKeyContractRunner(provider, randomPrivKey);
     await runner.init();
     const circlesConfig: CirclesConfig = {
       circlesRpcUrl: "https://rpc.aboutcircles.com/",
@@ -72,7 +74,6 @@ export class SafeAvatarChecker {
       }
 
       const result = await response.json();
-      console.log(`Trust score for ${avatarAddress}:`, result);
       return result;
     } catch (error) {
       console.error(`Error fetching trust score for ${avatarAddress}:`, error);
@@ -85,17 +86,38 @@ export class SafeAvatarChecker {
   // 2. user registers through Metri -> avatar is 
   async getSafesWithAvatars(connectedAccountAddress: string): Promise<SafeWithAvatar[]> {
     try {
-      // Get all safes owned by the connected account
-      const safes = await this.apiKit.getSafesByOwner(connectedAccountAddress);
-      
-      if (!safes.safes || safes.safes.length === 0) {
-        return [];
+    
+
+      // TODO: also check connectedAccount by calling 
+      //const safeInfo = await apiKit.getSafeInfo(connectedAccountAddress)
+      let safes: string[] = [];
+      const gnoClient = createPublicClient({
+        chain: gnosis,
+        transport: http()
+      })
+
+      const codeSize = await gnoClient.getCode({
+        address: connectedAccountAddress
+      })
+
+      if(codeSize !== undefined && codeSize.length > 0){
+        safes.push(connectedAccountAddress)
+
+      }else{
+        safes = (await this.apiKit.getSafesByOwner(connectedAccountAddress)).safes;
+        if (!safes || safes.length === 0) {
+          return [];
+        }
+
       }
+      console.log("safe info", safes)
+      
+      
 
       // Check each safe for avatar and filter out those with avatars
       const safesWithAvatars: SafeWithAvatar[] = [];
       
-      for (const safeAddress of safes.safes) {
+      for (const safeAddress of safes) {
         try {
           const avatar = await this.sdk.getAvatar(safeAddress as `0x${string}`, false);
           
@@ -127,11 +149,10 @@ export class SafeAvatarChecker {
 export async function checkSafesAndAvatars(
   connectedAccountAddress: string, 
   apiKey: string, 
-  privateKey: string
+  
 ): Promise<SafeWithAvatar[]> {
-  const checker = new SafeAvatarChecker(apiKey, privateKey);
+  const checker = new SafeAvatarChecker(apiKey);
   await checker.initialize();
   const avatars = await checker.getSafesWithAvatars(connectedAccountAddress);
-  console.log("avatars", avatars);
   return avatars;
 }

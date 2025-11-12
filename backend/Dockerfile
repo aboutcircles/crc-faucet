@@ -1,22 +1,23 @@
 FROM node:20-alpine
 
+# Install pnpm
+RUN npm install -g pnpm
+
 # Install build dependencies
 RUN apk add --no-cache python3 make g++
 
 # Set working directory
-WORKDIR /app
+WORKDIR /backend
 
 # Copy package files
 COPY package*.json ./
+COPY pnpm-lock.yaml ./
 
 # Install dependencies
-RUN npm install
+RUN pnpm install
 
 # Copy source code
 COPY . .
 
-# Expose port 3001
-EXPOSE 3001
-
 # Start the application
-CMD ["npm", "start"]
+CMD ["pnpm", "run", "start:faucetWorker"]

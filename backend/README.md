@@ -1,29 +1,40 @@
-## Sepolia
+# Circles Faucet Backend
 
-```solidity
-    event TokenDeposited(address indexed from, address indexed recipient, uint256 indexed amount);
-    event TokenWithdrawn(address indexed to, uint256 indexed amount);
-```
+This is the backend for the Circles Faucet. It is a Node.js application that listens for events on the Gnosis chain and sends Sepolia ETH to users.
 
-## Gnosis Chain
+## Getting Started
 
-```solidity
-    event TokenBridgingInitiated(address indexed from, address indexed recipient, uint256 indexed amount);
+### Prerequisites
 
-```
+- Node.js
+- pnpm
 
-1. Deployer / Cycle Owner
+### Installation
 
-# Workflow
+1.  Navigate to the `backend` directory:
 
-Sepolia -> Gnosis Chain
+    ```bash
+    cd backend
+    ```
 
-1. Deposit ETH on Sepolia and mint SepETH on Gnosis
-   1. `emit TokenDeposited(address indexed from, address indexed recipient, uint256 indexed amount);`
-   2. Worker call `SepETH.mint(recipient, amount)`;
-2. Create Order: use Scripts
-3. Swap CRC with ETH
-   1. User transfer CRC (front end to check score and link to URL)
-   2. CRC is received and emit transfer to user SepETH token on Gnosis
-   3. `Emit TokenBridgingInitiated(address indexed from, address indexed recipient, uint256 indexed amount);`
-   4. Worker call `NativeTokenDeposit.withdraw(to, amount)`
+2.  Install the dependencies:
+    ```bash
+    pnpm install
+    ```
+
+### Running the Worker
+
+1.  Create a `.env` file by copying the `.env.example` file:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+2.  Fill in the required environment variables in the `.env` file. You will need a private key with Sepolia ETH to send to users.
+
+3.  Start the worker:
+    ```bash
+    pnpm start:faucetWorker
+    ```
+
+The worker will start listening for `FaucetRequested` events on the Gnosis chain.

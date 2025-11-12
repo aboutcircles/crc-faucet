@@ -53,9 +53,9 @@ def filter_csv_by_risk_score(input_file, output_file, threshold=50.0):
 
 if __name__ == "__main__":
     # The script now expects 'riskscore.csv' to be in the same directory.
-    INPUT_FILE = 'riskscore.csv'
-    OUTPUT_FILE = 'filtered_riskscore.csv'
-    THRESHOLD = 60.0
+    INPUT_FILE = 'rawScore.csv'
+    OUTPUT_FILE = 'filtered_rawRiskscore.csv'
+    THRESHOLD = 50.0
     
     # Run the filtering logic
     filter_csv_by_risk_score(INPUT_FILE, OUTPUT_FILE, THRESHOLD)
