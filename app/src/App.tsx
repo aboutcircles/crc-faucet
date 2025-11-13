@@ -483,7 +483,7 @@ function App() {
                               const currentTimestamp = Math.floor(Date.now() / 1000)
                               const lastClaim = safe.lastClaimTimestamp || 0
                               const canClaimByTime = lastClaim === 0 || (currentTimestamp - lastClaim) > ONE_DAY_IN_SECONDS
-                              const trustScore = safe.trustScore?.results?.[0]?.score || 0
+                              const trustScore = safe.trustScore || 0
                               
                               if (!canClaimByTime) {
                                 return "You've claimed less than 1 day ago, please wait for 1 day to claim again"
