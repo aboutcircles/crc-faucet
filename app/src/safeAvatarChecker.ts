@@ -51,7 +51,130 @@ export class SafeAvatarChecker {
 
   }
 
+
+  private static readonly BACKERS_GROUP = '0x1aca75e38263c79d9d4f10df0635cc6fcfe6f026';
+  
+  private async fetchBackersMembers(): Promise<string[]> {
+    const payload = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'circles_query',
+      params: [{
+        Namespace: 'V_CrcV2',
+        Table: 'GroupMemberships',
+        Filter: [{
+          Type: 'FilterPredicate',
+          FilterType: 'Equals',
+          Column: 'group',
+          Value: SafeAvatarChecker.BACKERS_GROUP
+        }],
+        Order: [{ Column: 'member', SortOrder: 'Asc' }],
+        Limit: 10000
+      }]
+    };
+
+    try {
+      console.log('Fetching Backers group members from RPC...');
+      const response = await fetch('https://rpc.aboutcircles.com/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      console.log(`RPC Response status: ${response.status} ${response.statusText}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`RPC Error Response: ${errorText}`);
+        throw new Error(`RPC request failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('RPC Response data:', data);
+
+      if (data.result && data.result.rows) {
+        const backersMembers = data.result.rows.map((row: any[]) => row[6]);
+        console.log(`Loaded ${backersMembers.length} Backers group members`);
+        console.log('Sample members:', backersMembers.slice(0, 3));
+
+        // Validate addresses are in correct format
+        const addressRegex = /^0x[a-fA-F0-9]{40}$/;
+        const validMembers = backersMembers.filter((addr: any) => 
+          addr && typeof addr === 'string' && addressRegex.test(addr)
+        );
+
+        if (validMembers.length !== backersMembers.length) {
+          console.log(`Filtered ${backersMembers.length - validMembers.length} invalid addresses`);
+        }
+
+        return validMembers;
+      } else {
+        console.error('Unexpected response format:', data);
+        throw new Error('Invalid response format from RPC');
+      }
+    } catch (error) {
+      console.error(`Error fetching Backers members: ${error}`);
+      throw new Error(`Failed to fetch Backers members: ${error}`);
+    }
+  }
   async getTrustScore(avatarAddress: string): Promise<any> {
+    try {
+      const trustScoreUrl = import.meta.env.VITE_TRUST_SCORE_URL;
+      if (!trustScoreUrl) {
+        console.warn('VITE_TRUST_SCORE_URL not configured');
+        return null;
+      }
+
+      // Fetch backers members first
+      const targetAddresses = await this.fetchBackersMembers();
+
+      const analyticsApi = `${trustScoreUrl}/aboutcircles-advanced-analytics2/scoring/relative_trustscore`;
+      const payload = {
+        "avatars": [avatarAddress],
+        "target_set": targetAddresses,
+        "include_details": false
+      };
+    
+
+      const response = await fetch(analyticsApi, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      // Return only the relative_score from the first result
+      if (result.results && result.results.length > 0) {
+        console.log("Trust score ", result.results[0].relative_score )
+        return result.results[0].relative_score
+        // {
+        //   relative_score: result.results[0].relative_score,
+        //   targets_reached: result.results[0].targets_reached,
+        //   total_targets: result.results[0].total_targets,
+        //   penetration_rate: result.results[0].penetration_rate,
+        //   hop_breakdown: result.results[0].hop_breakdown
+        // };
+      }else{
+        return 0;
+      }
+      
+    } catch (error) {
+      console.error(`Error fetching trust score for ${avatarAddress}:`, error);
+      return null;
+    }
+  }
+
+
+  // We don't use RiskScore but Relative Trust Score instead
+  async getRiskScore(avatarAddress: string): Promise<any> {
     try {
       const trustScoreUrl = import.meta.env.VITE_TRUST_SCORE_URL;
       if (!trustScoreUrl) {
