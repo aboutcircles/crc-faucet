@@ -10,11 +10,7 @@ import QRCode from 'qrcode';
 interface SafeWithAvatar {
   safeAddress: string;
   avatarInfo: any;
-  trustScore?: {
-    results?: Array<{
-      score: number;
-    }>;
-  };
+  trustScore?: number;
   lastClaimTimestamp?: number;
   isEligible?: boolean;
 }
@@ -158,7 +154,7 @@ function App() {
     const canClaimByTime = lastClaim === 0 || (currentTimestamp - lastClaim) > ONE_DAY_IN_SECONDS
     
     // Check trust score
-    const trustScore = safe.trustScore?.results?.[0]?.score || 0
+    const trustScore = safe.trustScore || 0
     const canClaimByTrust = trustScore > TRUST_SCORE_THRESHOLD
     
     // User is eligible if they meet the time requirement OR have sufficient trust score
