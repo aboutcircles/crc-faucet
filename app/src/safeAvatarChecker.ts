@@ -277,6 +277,5 @@ export async function checkSafesAndAvatars(
   const checker = new SafeAvatarChecker(apiKey);
   await checker.initialize();
   const avatars = await checker.getSafesWithAvatars(connectedAccountAddress);
-  console.log("Get Safe with Avatars", avatars);
   return avatars;
 }
