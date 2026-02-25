@@ -39,4 +39,5 @@ interface IHub {
     ) external;
     /// @notice wraps ERC1155 token into ERC20 token
     function wrap(address avatar, uint256 amount, uint8 circlesType) external returns (address);
+    function isHuman(address avatar) external view returns (bool);
 }
